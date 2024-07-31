@@ -2,6 +2,13 @@
     .name = "jwt",
     .version = "0.1.0",
     .minimum_zig_version = "0.13.0",
+    .dependencies = .{
+        // todo: update this to a versioned tag when this package publishes one
+        .benchmark = .{
+            .url = "https://github.com/silversquirl/benchmark.zig/archive/refs/heads/main/main.tar.gz",
+            .hash = "1220287c22cfcf85f05d353084e12200c6a7dcb5f4511cb05103f5dbd709e50731a7",
+        },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",

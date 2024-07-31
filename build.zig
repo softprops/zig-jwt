@@ -78,5 +78,22 @@ pub fn build(b: *std.Build) !void {
         // install the artifact - depending on the example exe
         const example_build_step = b.addInstallArtifact(exe, .{});
         example_step.dependOn(&example_build_step.step);
+
+        const benchmark_tests = b.addTest(.{
+            .root_source_file = b.path("src/bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .filters = &.{"bench"},
+        });
+        const benchmark = b.dependency("benchmark", .{
+            .target = target,
+            .optimize = optimize,
+        }).module("benchmark");
+        benchmark_tests.root_module.addImport("benchmark", benchmark);
+
+        const run_benchmark_tests = b.addRunArtifact(benchmark_tests);
+
+        const benchmark_step = b.step("bench", "Run benchmark tests");
+        benchmark_step.dependOn(&run_benchmark_tests.step);
     }
 }
