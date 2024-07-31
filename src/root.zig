@@ -5,7 +5,7 @@ pub const DecodingKey = union(enum) {
     secret: []const u8,
 };
 
-/// Key used for encoding JWT tokens components
+/// Key used for encoding JWT token components
 pub const EncodingKey = union(enum) {
     secret: []const u8,
 };
