@@ -8,9 +8,19 @@ const Header = @import("root.zig").Header;
 pub const DecodingKey = union(enum) {
     secret: []const u8,
     edsa: std.crypto.sign.Ed25519.PublicKey,
+    es256: std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey,
+    es384: std.crypto.sign.ecdsa.EcdsaP384Sha384.PublicKey,
 
     fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey]u8) !@This() {
         return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
+    }
+
+    pub fn fromEs256Bytes(bytes: [std.crypto.ecdsa.EcdsaP256Sha256.PublicKey.encoded_length]u8) !@This() {
+        return .{ .es256 = try std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey.fromBytes(bytes) };
+    }
+
+    pub fn fromEs384Bytes(bytes: [std.crypto.ecdsa.EcdsaP384Sha384.PublicKey.encoded_length]u8) !@This() {
+        return .{ .es384 = try std.crypto.sign.ecdsa.EcdsaP384Sha384.PublicKey.fromBytes(bytes) };
     }
 };
 
@@ -99,6 +109,26 @@ pub fn verify(
             if (!std.crypto.utils.timingSafeEql([dest.len]u8, src, dest)) {
                 return error.InvalidSignature;
             }
+        },
+        .ES256 => {
+            var src: [std.crypto.sign.ecdsa.EcdsaP256Sha256.Signature.encoded_length]u8 = undefined;
+            @memcpy(&src, sig);
+            std.crypto.sign.ecdsa.EcdsaP256Sha256.Signature.fromBytes(src).verify(msg, switch (key) {
+                .es256 => |v| v,
+                else => return error.InvalidDecodingKey,
+            }) catch {
+                return error.InvalidSignature;
+            };
+        },
+        .ES384 => {
+            var src: [std.crypto.sign.ecdsa.EcdsaP384Sha384.Signature.encoded_length]u8 = undefined;
+            @memcpy(&src, sig);
+            std.crypto.sign.ecdsa.EcdsaP384Sha384.Signature.fromBytes(src).verify(msg, switch (key) {
+                .es384 => |v| v,
+                else => return error.InvalidDecodingKey,
+            }) catch {
+                return error.InvalidSignature;
+            };
         },
         .EdDSA => {
             var src: [std.crypto.sign.Ed25519.Signature.encoded_length]u8 = undefined;

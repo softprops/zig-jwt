@@ -6,10 +6,20 @@ const Header = @import("root.zig").Header;
 pub const EncodingKey = union(enum) {
     secret: []const u8,
     edsa: std.crypto.sign.Ed25519.SecretKey,
+    es256: std.crypto.sign.ecdsa.EcdsaP256Sha256.SecretKey,
+    es384: std.crypto.sign.ecdsa.EcdsaP384Sha384.SecretKey,
 
     /// create a new edsa encoding key from edsa secret key bytes
     pub fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey.encoded_length]u8) !@This() {
         return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
+    }
+
+    pub fn fromEs256Bytes(bytes: [std.crypto.ecdsa.EcdsaP256Sha256.SecretKey.encoded_length]u8) !@This() {
+        return .{ .es256 = try std.crypto.sign.ecdsa.EcdsaP256Sha256.SecretKey.fromBytes(bytes) };
+    }
+
+    pub fn fromEs384Bytes(bytes: [std.crypto.ecdsa.EcdsaP384Sha384.SecretKey.encoded_length]u8) !@This() {
+        return .{ .es384 = try std.crypto.sign.ecdsa.EcdsaP384Sha384.SecretKey.fromBytes(bytes) };
     }
 };
 
@@ -60,6 +70,22 @@ fn sign(
                 .secret => |v| v,
                 else => return error.InvalidEncodingKey,
             });
+            break :blk allocator.dupe(u8, &dest);
+        },
+        .ES256 => blk: {
+            const pair = try std.crypto.sign.ecdsa.EcdsaP256Sha256.KeyPair.fromSecretKey(switch (key) {
+                .es256 => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
+            const dest = (try pair.sign(msg, null)).toBytes();
+            break :blk allocator.dupe(u8, &dest);
+        },
+        .ES384 => blk: {
+            const pair = try std.crypto.sign.ecdsa.EcdsaP384Sha384.KeyPair.fromSecretKey(switch (key) {
+                .es384 => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
+            const dest = (try pair.sign(msg, null)).toBytes();
             break :blk allocator.dupe(u8, &dest);
         },
         .EdDSA => blk: {
