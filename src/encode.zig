@@ -5,7 +5,19 @@ const Header = @import("root.zig").Header;
 /// Key used for encoding JWT token components
 pub const EncodingKey = union(enum) {
     secret: []const u8,
+    edsa: std.crypto.sign.Ed25519.SecretKey,
+
+    /// create a new edsa encoding key from edsa secret key bytes
+    pub fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey.encoded_length]u8) !@This() {
+        return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
+    }
 };
+
+test EncodingKey {
+    const pair = try std.crypto.sign.Ed25519.KeyPair.create(null);
+    const key = try EncodingKey.fromEdsaBytes(pair.secret_key.toBytes());
+    try std.testing.expectEqual(key.edsa.toBytes(), pair.secret_key.toBytes());
+}
 
 fn encodePart(
     allocator: std.mem.Allocator,
@@ -39,6 +51,11 @@ fn sign(
         .HS512 => blk: {
             var dest: [std.crypto.auth.hmac.sha2.HmacSha512.mac_length]u8 = undefined;
             std.crypto.auth.hmac.sha2.HmacSha512.create(&dest, msg, key.secret);
+            break :blk allocator.dupe(u8, &dest);
+        },
+        .EdDSA => blk: {
+            const pair = try std.crypto.sign.Ed25519.KeyPair.fromSecretKey(key.edsa);
+            const dest = (try pair.sign(msg, null)).toBytes();
             break :blk allocator.dupe(u8, &dest);
         },
         else => return error.TODO,

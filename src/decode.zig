@@ -7,6 +7,11 @@ const Header = @import("root.zig").Header;
 /// Key used for decoding JWT tokens
 pub const DecodingKey = union(enum) {
     secret: []const u8,
+    edsa: std.crypto.sign.Ed25519.PublicKey,
+
+    fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey]u8) !@This() {
+        return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
+    }
 };
 
 fn decodePart(allocator: std.mem.Allocator, comptime T: type, encoded: []const u8) !T {
@@ -86,6 +91,16 @@ pub fn verify(
                 return error.InvalidSignature;
             }
         },
+        .EdDSA => {
+            var src: [std.crypto.sign.Ed25519.Signature.encoded_length]u8 = undefined;
+            @memcpy(&src, sig);
+            std.crypto.sign.Ed25519.Signature.fromBytes(src).verify(msg, key.edsa) catch {
+                return error.InvalidSignature;
+            };
+        },
+
+        //
+        //
         else => return error.TODO,
     }
 
