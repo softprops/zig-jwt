@@ -411,14 +411,21 @@ pub fn decode(
 
 test "roundtrip" {
     const allocator = std.testing.allocator;
-    const token = try encode(allocator, .{ .alg = .HS256 }, .{ .sub = "test", .exp = @divTrunc(std.time.milliTimestamp(), 1000) * 10 }, .{ .secret = "secret" });
+    const validation: Validation = .{
+        .now = struct {
+            fn func() u64 {
+                return 1722441274; // Wednesday, July 31, 2024 3:54:34 PM - in seconds
+            }
+        }.func,
+    };
+    const token = try encode(allocator, .{ .alg = .HS256 }, .{ .sub = "test", .exp = validation.now() + 60 }, .{ .secret = "secret" });
     defer allocator.free(token);
     var jwt = try decode(
         std.testing.allocator,
         struct { sub: []const u8 },
         token,
         .{ .secret = "secret" },
-        .{},
+        validation,
     );
     defer jwt.deinit();
     try std.testing.expectEqualStrings("test", jwt.claims.sub);
