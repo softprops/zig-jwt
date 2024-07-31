@@ -31,7 +31,8 @@ pub fn main() !void {
         token,
         // 👇 decoding key used to verify encoded token's signature
         .{ .secret = "secret" },
-        // 👇 verification rules that must hold for the token to be successfully decoded
+        // 👇 verification rules that must hold for the token to be successfully decoded.
+        // this includes sensible defaults.
         .{},
     );
     defer decoded.deinit();

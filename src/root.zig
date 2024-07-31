@@ -61,6 +61,8 @@ pub const Header = struct {
 /// not expired.
 const Validation = struct {
     /// registered claims used for validation
+    ///
+    /// see also [rfc7519#section-4.1](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1)
     const RegisteredClaims = struct {
         exp: ?u64 = null,
         nbf: ?u64 = null,
@@ -71,17 +73,29 @@ const Validation = struct {
 
     const RegisteredClaim = enum { exp, sub, iss, aud, nbf };
 
+    /// list of claims expected to have been provided
     required_claims: []const RegisteredClaim = &.{.exp},
+    /// amount of clockskew, in seconds, permitted
     leeway: u64 = 60,
+    /// buffered amount of time to adjust timestamp to account for probably network transit time
+    /// after which this token would be expired
     reject_tokens_expiring_in_less_than: u64 = 0,
+    /// validate token is not past expiration time
     validate_exp: bool = true,
+    /// validate token is not used not before expected time
     validate_nbf: bool = false,
+    /// validate audience is as expected
     validate_aud: bool = true,
+    /// validate expected audience
     aud: ?[]const []const u8 = null,
+    /// validate expected issuer
     iss: ?[]const []const u8 = null,
+    /// validate expected subject
     sub: ?[]const u8 = null,
+    /// validate supported algoritm
     algorithms: []const Algorithm = &.{.HS256},
 
+    /// validate token meets baseline of registered claims rules
     fn validate(self: @This(), claims: RegisteredClaims) anyerror!void {
         // were all required registered claims provided?
         for (self.required_claims) |c| {
@@ -159,6 +173,53 @@ const Validation = struct {
     }
 };
 
+test Validation {
+    for ([_]struct {
+        desc: []const u8,
+        claims: Validation.RegisteredClaims,
+        validation: Validation,
+        expect: ?anyerror,
+    }{
+        .{
+            .desc = "default: missing exp",
+            .claims = .{},
+            .validation = .{},
+            .expect = error.MissingExp,
+        },
+        .{
+            .desc = "default: expired",
+            .claims = .{
+                .exp = 0,
+            },
+            .validation = .{},
+            .expect = error.TokenExpired,
+        },
+        .{
+            .desc = "default: expected aud",
+            .claims = .{
+                .exp = @intCast(@divTrunc(std.time.milliTimestamp(), 1000) * 10),
+                .aud = "foo",
+            },
+            .validation = .{
+                .aud = &.{"bar"},
+            },
+            .expect = error.InvalidAudience,
+        },
+    }) |case| {
+        if (case.validation.validate(case.claims)) {
+            std.testing.expect(case.expect != null) catch |err| {
+                std.debug.print("error: {s}\n", .{case.desc});
+                return err;
+            };
+        } else |err| {
+            std.testing.expect(err == case.expect orelse return error.TestUnexpectedResult) catch |e| {
+                std.debug.print("error: {s}", .{case.desc});
+                return e;
+            };
+        }
+    }
+}
+
 pub fn JWT(comptime ClaimSet: type) type {
     return struct {
         arena: *std.heap.ArenaAllocator,
@@ -185,7 +246,15 @@ fn encodePart(
     return enc;
 }
 
-fn verify(allocator: std.mem.Allocator, algo: Algorithm, key: DecodingKey, comptime ClaimSet: type, msg: []const u8, sigEnc: []const u8, validation: Validation) !ClaimSet {
+fn verify(
+    allocator: std.mem.Allocator,
+    algo: Algorithm,
+    key: DecodingKey,
+    comptime ClaimSet: type,
+    msg: []const u8,
+    sigEnc: []const u8,
+    validation: Validation,
+) !ClaimSet {
     const decoder = std.base64.url_safe_no_pad.Decoder;
     const sig = try allocator.alloc(u8, try decoder.calcSizeForSlice(sigEnc));
     _ = try decoder.decode(sig, sigEnc);
@@ -218,11 +287,18 @@ fn verify(allocator: std.mem.Allocator, algo: Algorithm, key: DecodingKey, compt
                 return error.InvalidSignature;
             }
         },
+        else => return error.TODO,
     }
 
-    try validation.validate(try decodePart(allocator, Validation.RegisteredClaims, msg[std.mem.indexOfScalar(u8, msg, '.').? + 1 ..]));
+    try validation.validate(
+        try decodePart(allocator, Validation.RegisteredClaims, msg[std.mem.indexOfScalar(u8, msg, '.').? + 1 ..]),
+    );
 
-    const claims = try decodePart(allocator, ClaimSet, msg[std.mem.indexOfScalar(u8, msg, '.').? + 1 ..]);
+    const claims = try decodePart(
+        allocator,
+        ClaimSet,
+        msg[std.mem.indexOfScalar(u8, msg, '.').? + 1 ..],
+    );
 
     return claims;
 }
@@ -249,6 +325,7 @@ fn sign(
             std.crypto.auth.hmac.sha2.HmacSha512.create(&dest, msg, key.secret);
             break :blk allocator.dupe(u8, &dest);
         },
+        else => return error.TODO,
     };
 }
 
