@@ -94,6 +94,12 @@ const Validation = struct {
     sub: ?[]const u8 = null,
     /// validate supported algoritm
     algorithms: []const Algorithm = &.{.HS256},
+    // returns "now" in seconds, relative to UTC 1970-01-01
+    now: *const fn () u64 = struct {
+        fn func() u64 {
+            return @intCast(std.time.timestamp());
+        }
+    }.func,
 
     /// validate token meets baseline of registered claims rules
     fn validate(self: @This(), claims: RegisteredClaims) anyerror!void {
@@ -110,7 +116,7 @@ const Validation = struct {
 
         // is this token being used before or after its intended window of usage?
         if (self.validate_exp or self.validate_nbf) {
-            const nowSec: u64 = @intCast(@divTrunc(std.time.milliTimestamp(), 1_000));
+            const nowSec = self.now();
             if (self.validate_exp) {
                 if (claims.exp) |exp| {
                     if (exp - self.reject_tokens_expiring_in_less_than < nowSec - self.leeway) {
@@ -197,7 +203,7 @@ test Validation {
         .{
             .desc = "default: expected aud",
             .claims = .{
-                .exp = @intCast(@divTrunc(std.time.milliTimestamp(), 1000) * 10),
+                .exp = @intCast(std.time.timestamp() * 10),
                 .aud = "foo",
             },
             .validation = .{

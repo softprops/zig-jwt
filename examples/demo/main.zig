@@ -14,7 +14,7 @@ pub fn main() !void {
         // 👇 claims
         .{
             .sub = "demo",
-            .exp = @divTrunc(std.time.milliTimestamp(), 1000) * 10,
+            .exp = std.time.timestamp() * 10,
             .aud = "demo",
         },
         // 👇 encoding key used to sign token
