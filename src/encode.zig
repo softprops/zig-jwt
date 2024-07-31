@@ -40,21 +40,33 @@ fn sign(
     return switch (algo) {
         .HS256 => blk: {
             var dest: [std.crypto.auth.hmac.sha2.HmacSha256.mac_length]u8 = undefined;
-            std.crypto.auth.hmac.sha2.HmacSha256.create(&dest, msg, key.secret);
+            std.crypto.auth.hmac.sha2.HmacSha256.create(&dest, msg, switch (key) {
+                .secret => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
             break :blk allocator.dupe(u8, &dest);
         },
         .HS384 => blk: {
             var dest: [std.crypto.auth.hmac.sha2.HmacSha384.mac_length]u8 = undefined;
-            std.crypto.auth.hmac.sha2.HmacSha384.create(&dest, msg, key.secret);
+            std.crypto.auth.hmac.sha2.HmacSha384.create(&dest, msg, switch (key) {
+                .secret => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
             break :blk allocator.dupe(u8, &dest);
         },
         .HS512 => blk: {
             var dest: [std.crypto.auth.hmac.sha2.HmacSha512.mac_length]u8 = undefined;
-            std.crypto.auth.hmac.sha2.HmacSha512.create(&dest, msg, key.secret);
+            std.crypto.auth.hmac.sha2.HmacSha512.create(&dest, msg, switch (key) {
+                .secret => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
             break :blk allocator.dupe(u8, &dest);
         },
         .EdDSA => blk: {
-            const pair = try std.crypto.sign.Ed25519.KeyPair.fromSecretKey(key.edsa);
+            const pair = try std.crypto.sign.Ed25519.KeyPair.fromSecretKey(switch (key) {
+                .edsa => |v| v,
+                else => return error.InvalidEncodingKey,
+            });
             const dest = (try pair.sign(msg, null)).toBytes();
             break :blk allocator.dupe(u8, &dest);
         },
