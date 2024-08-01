@@ -10,6 +10,7 @@ pub const DecodingKey = union(enum) {
     edsa: std.crypto.sign.Ed25519.PublicKey,
     es256: std.crypto.sign.ecdsa.EcdsaP256Sha256.PublicKey,
     es384: std.crypto.sign.ecdsa.EcdsaP384Sha384.PublicKey,
+    rsa: std.crypto.Certificate.rsa.PublicKey,
 
     fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey]u8) !@This() {
         return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
@@ -130,6 +131,16 @@ pub fn verify(
                 return error.InvalidSignature;
             };
         },
+        // .PS256 => {
+        //     const modulus_len = 256;
+        //     const psSig = std.crypto.Certificate.rsa.PSSSignature.fromBytes(modulus_len, sig);
+        //     std.crypto.Certificate.rsa.PSSSignature.verify(modulus_len, psSig, msg, switch (key) {
+        //         .rsa => |v| v,
+        //         else => return error.InvalidDecodingKey,
+        //     }, std.crypto.hash.sha2.Sha256) catch {
+        //         return error.InvalidSignature;
+        //     };
+        // },
         .EdDSA => {
             var src: [std.crypto.sign.Ed25519.Signature.encoded_length]u8 = undefined;
             @memcpy(&src, sig);

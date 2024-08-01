@@ -6,6 +6,10 @@ pub const Validation = @import("validation.zig").Validation;
 pub const encode = @import("encode.zig").encode;
 pub const EncodingKey = @import("encode.zig").EncodingKey;
 
+/// A collection of commonly used signature algorithms which
+/// JWT adopted from JOSE specifications.
+///
+/// For a fuller list, [this list](https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms).
 pub const Algorithm = enum {
     /// HMAC using SHA-256
     HS256,

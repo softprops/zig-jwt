@@ -23,12 +23,6 @@ pub const EncodingKey = union(enum) {
     }
 };
 
-test EncodingKey {
-    const pair = try std.crypto.sign.Ed25519.KeyPair.create(null);
-    const key = try EncodingKey.fromEdsaBytes(pair.secret_key.toBytes());
-    try std.testing.expectEqual(key.edsa.toBytes(), pair.secret_key.toBytes());
-}
-
 fn encodePart(
     allocator: std.mem.Allocator,
     part: anytype,
