@@ -12,6 +12,10 @@ pub const DecodingKey = union(enum) {
     es384: std.crypto.sign.ecdsa.EcdsaP384Sha384.PublicKey,
     //rsa: std.crypto.Certificate.rsa.PublicKey,
 
+    fn fromSecret(secret: []const u8) @This() {
+        return .{ .secret = secret };
+    }
+
     fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey]u8) !@This() {
         return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
     }
