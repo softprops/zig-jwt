@@ -16,8 +16,8 @@ pub const DecodingKey = union(enum) {
         return .{ .secret = secret };
     }
 
-    fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.SecretKey]u8) !@This() {
-        return .{ .edsa = try std.crypto.sign.Ed25519.SecretKey.fromBytes(bytes) };
+    fn fromEdsaBytes(bytes: [std.crypto.sign.Ed25519.PublicKey]u8) !@This() {
+        return .{ .edsa = try std.crypto.sign.Ed25519.PublicKey.fromBytes(bytes) };
     }
 
     pub fn fromEs256Bytes(bytes: [std.crypto.ecdsa.EcdsaP256Sha256.PublicKey.encoded_length]u8) !@This() {
