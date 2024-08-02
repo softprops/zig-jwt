@@ -5,6 +5,19 @@ on:
   pull_request:
 
 jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: [fmt, test, examples]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
   fmt:
     runs-on: ubuntu-latest
     permissions:
